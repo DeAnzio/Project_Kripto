@@ -1,575 +1,268 @@
 import streamlit as st
-import base64
-import os
-from datetime import datetime
+from PIL import Image
+import io
 
-# Import modul kita
-from auth.login import verify_login, register_user, save_encrypted_message
-from crypto.super_encrypt import SuperEncrypt
-from crypto.file_crypto import FileCrypto
-from crypto.steganography_pvd import PVDSteganography
+# --- Konfigurasi Halaman ---
+st.set_page_config(page_title="Project Kripto", layout="wide")
 
-# Page configuration
-st.set_page_config(
-    page_title="Aplikasi Kriptografi",
-    page_icon="🔐",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
+# =============================================================================
+# --- FUNGSI PLACEHOLDER ---
+# Ganti isi fungsi-fungsi ini dengan logika dari file .py Anda yang sebenarnya.
+# Anda perlu mengimpornya, contoh: from auth.login import cek_login_md5
+# =============================================================================
 
-# Initialize session state
+def handle_login(username, password):
+    """
+    Placeholder untuk auth/login.py (Login dengan MD5).
+    Ganti ini dengan fungsi login Anda.
+    """
+    # from auth.login import fungsi_login_anda
+    # return fungsi_login_anda(username, password)
+    
+    # Logika placeholder sederhana:
+    if username == "admin" and password == "123":
+        st.success("Login berhasil!")
+        return True
+    else:
+        st.error("Username atau password salah")
+        return False
+
+def handle_register(username, password):
+    """
+    Placeholder untuk registrasi (mungkin juga di auth/login.py atau db_connection.py).
+    Ganti ini dengan fungsi registrasi Anda.
+    """
+    # from auth.register import fungsi_register_anda
+    # return fungsi_register_anda(username, password)
+    
+    # Logika placeholder sederhana:
+    print(f"Mencoba mendaftarkan: {username}")
+    st.success("Registrasi berhasil! Silakan login.")
+    return True
+
+def handle_super_encrypt(plain_text):
+    """
+    Placeholder untuk crypto/super_encrypt.py (Whitespace + AES128-GCM).
+    """
+    # from crypto.super_encrypt import fungsi_enkripsi_super
+    # return fungsi_enkripsi_super(plain_text)
+    
+    # Logika placeholder sederhana:
+    if not plain_text:
+        return ""
+    encrypted_text = f"[WHITESPACE_AES_ENCRYPTED: {plain_text[::-1]}]"
+    return encrypted_text
+
+def handle_steganography_encode(image_file, secret_text):
+    """
+    Placeholder untuk crypto/steganography_pvd.py (PVD Steganografi).
+    Fungsi ini harus mengembalikan objek gambar (PIL Image) atau bytes.
+    """
+    # from crypto.steganography_pvd import fungsi_stego_encode
+    # pil_image = Image.open(image_file)
+    # result_image = fungsi_stego_encode(pil_image, secret_text)
+    # return result_image
+    
+    # Logika placeholder sederhana (hanya mengembalikan gambar asli):
+    st.success("Teks berhasil disembunyikan (placeholder).")
+    return Image.open(image_file)
+
+def handle_file_encrypt(uploaded_file):
+    """
+    Placeholder untuk crypto/file_crypto.py (ChaCha20 untuk file).
+    Fungsi ini harus mengembalikan bytes dari file yang terenkripsi.
+    """
+    # from crypto.file_crypto import fungsi_enkripsi_file
+    # file_bytes = uploaded_file.getvalue()
+    # encrypted_bytes = fungsi_enkripsi_file(file_bytes)
+    # return encrypted_bytes
+    
+    # Logika placeholder sederhana:
+    file_bytes = uploaded_file.getvalue()
+    encrypted_bytes = b"[CHACHA20_ENCRYPTED] " + file_bytes
+    return encrypted_bytes
+
+def handle_file_decrypt(uploaded_file):
+    """
+    Placeholder untuk crypto/file_crypto.py (ChaCha20 untuk file).
+    Fungsi ini harus mengembalikan bytes dari file yang terdekripsi.
+    """
+    # from crypto.file_crypto import fungsi_dekripsi_file
+    # file_bytes = uploaded_file.getvalue()
+    # decrypted_bytes = fungsi_dekripsi_file(file_bytes)
+    # return decrypted_bytes
+    
+    # Logika placeholder sederhana:
+    file_bytes = uploaded_file.getvalue()
+    # Hapus prefix placeholder jika ada
+    if file_bytes.startswith(b"[CHACHA20_ENCRYPTED] "):
+        decrypted_bytes = file_bytes[len(b"[CHACHA20_ENCRYPTED] "):]
+    else:
+        decrypted_bytes = b"[DECRYPTION_FAILED_OR_NOT_ENCRYPTED] " + file_bytes
+    return decrypted_bytes
+
+# =============================================================================
+# --- Inisialisasi Session State ---
+# =============================================================================
+
 if 'logged_in' not in st.session_state:
     st.session_state.logged_in = False
-if 'user_id' not in st.session_state:
-    st.session_state.user_id = None
+if 'page' not in st.session_state:
+    st.session_state.page = 'login'
 if 'username' not in st.session_state:
-    st.session_state.username = None
+    st.session_state.username = ""
 
-def main():
-    st.title("🔐 Aplikasi Kriptografi Tugas Akhir")
-    st.markdown("---")
-    
-    # Jika belum login, tampilkan form login/register
-    if not st.session_state.logged_in:
-        show_login_register()
-        return
-    
-    # Jika sudah login, tampilkan menu utama
-    show_main_application()
+# =============================================================================
+# --- Halaman Login & Register ---
+# =============================================================================
 
-def show_login_register():
-    """Tampilkan form login dan register"""
-    tab1, tab2 = st.tabs(["🔐 Login", "📝 Register"])
+if not st.session_state.logged_in:
     
-    with tab1:
-        st.subheader("Login ke Aplikasi")
+    if st.session_state.page == 'login':
+        st.title("Selamat Datang! Silakan Login")
         
         with st.form("login_form"):
-            username = st.text_input("Username", key="login_username")
-            password = st.text_input("Password", type="password", key="login_password")
-            login_btn = st.form_submit_button("Login")
+            username = st.text_input("Username")
+            password = st.text_input("Password", type="password")
+            login_button = st.form_submit_button("Login")
             
-            if login_btn:
-                if not username or not password:
-                    st.error("Username dan password harus diisi!")
-                elif verify_login(username, password):
+            if login_button:
+                if handle_login(username, password):
                     st.session_state.logged_in = True
-                    st.success(f"Login berhasil! Selamat datang {username}")
+                    st.session_state.username = username
+                    st.session_state.page = 'main'
                     st.rerun()
-                else:
-                    st.error("Username atau password salah!")
-    
-    with tab2:
-        st.subheader("Registrasi User Baru")
+
+        st.markdown("---")
+        st.write("Belum punya akun?")
+        if st.button("Pergi ke Halaman Register"):
+            st.session_state.page = 'register'
+            st.rerun()
+
+    elif st.session_state.page == 'register':
+        st.title("Buat Akun Baru")
         
         with st.form("register_form"):
-            new_username = st.text_input("Username", key="reg_username")
-            new_email = st.text_input("Email", key="reg_email")
-            new_password = st.text_input("Password", type="password", key="reg_password")
-            confirm_password = st.text_input("Confirm Password", type="password", key="reg_confirm")
-            register_btn = st.form_submit_button("Register")
+            new_username = st.text_input("Username Baru")
+            new_password = st.text_input("Password Baru", type="password")
+            confirm_password = st.text_input("Konfirmasi Password", type="password")
+            register_button = st.form_submit_button("Register")
             
-            if register_btn:
-                if not new_username or not new_password or not confirm_password:
-                    st.error("Semua field harus diisi!")
-                elif new_password != confirm_password:
-                    st.error("Password tidak cocok!")
+            if register_button:
+                if new_password == confirm_password:
+                    if handle_register(new_username, new_password):
+                        # Otomatis kembali ke login setelah sukses register
+                        st.session_state.page = 'login'
+                        st.rerun()
                 else:
-                    success, message = register_user(new_username, new_password, new_email)
-                    if success:
-                        st.success(message)
-                    else:
-                        st.error(message)
+                    st.error("Password tidak cocok!")
 
-def show_main_application():
-    """Tampilkan aplikasi utama setelah login"""
-    st.sidebar.title(f"👋 Welcome, {st.session_state.username}!")
-    
-    # Navigation menu
-    menu = st.sidebar.selectbox(
-        "Pilih Menu",
-        ["🏠 Dashboard", "📝 Enkripsi Teks", "🔓 Dekripsi Teks", "📁 Enkripsi File", 
-         "🖼 Steganografi", "📊 History", "⚙️ Settings"]
-    )
-    
+        st.markdown("---")
+        st.write("Sudah punya akun?")
+        if st.button("Pergi ke Halaman Login"):
+            st.session_state.page = 'login'
+            st.rerun()
+
+# =============================================================================
+# --- Halaman Utama (Setelah Login) ---
+# =============================================================================
+
+else:
+    # --- Sidebar ---
+    st.sidebar.title(f"Halo, {st.session_state.username}!")
     st.sidebar.markdown("---")
-    if st.sidebar.button("🚪 Logout"):
+    if st.sidebar.button("Logout"):
         st.session_state.logged_in = False
-        st.session_state.user_id = None
-        st.session_state.username = None
+        st.session_state.username = ""
+        st.session_state.page = 'login'
         st.rerun()
     
-    # Tampilkan konten berdasarkan menu
-    if menu == "🏠 Dashboard":
-        show_dashboard()
-    elif menu == "📝 Enkripsi Teks":
-        show_text_encryption()
-    elif menu == "🔓 Dekripsi Teks":
-        show_text_decryption()
-    elif menu == "📁 Enkripsi File":
-        show_file_encryption()
-    elif menu == "🖼 Steganografi":
-        show_steganography()
-    elif menu == "📊 History":
-        show_history()
-    elif menu == "⚙️ Settings":
-        show_settings()
+    st.sidebar.info("Gunakan panel di samping untuk navigasi antar fitur.")
 
-def show_dashboard():
-    """Dashboard utama"""
-    st.header("🏠 Dashboard")
-    
-    col1, col2, col3 = st.columns(3)
-    
-    with col1:
-        st.info("""
-        **🔐 Super Enkripsi Teks**
-        - Whitespace Manipulation
-        - AES128-GCM Encryption
-        - Secure Text Storage
-        """)
-    
-    with col2:
-        st.info("""
-        **📁 File Encryption**
-        - ChaCha20-Poly1305
-        - All File Types
-        - Fast Processing
-        """)
-    
-    with col3:
-        st.info("""
-        **🖼 Steganografi PVD**
-        - Pixel Value Differencing
-        - Hide Text in Images
-        - Visual Quality Maintained
-        """)
-    
-    st.markdown("---")
-    st.subheader("Quick Actions")
-    
-    quick_col1, quick_col2, quick_col3 = st.columns(3)
-    
-    with quick_col1:
-        if st.button("📝 Enkripsi Teks", use_container_width=True):
-            st.switch_page("app.py")  # Akan navigate ke tab enkripsi
-    
-    with quick_col2:
-        if st.button("📁 Enkripsi File", use_container_width=True):
-            st.switch_page("app.py")
-    
-    with quick_col3:
-        if st.button("🖼 Steganografi", use_container_width=True):
-            st.switch_page("app.py")
+    # --- Konten Halaman Utama ---
+    st.title("🔒 Aplikasi Kriptografi & Steganografi")
+    st.markdown("Pilih salah satu fitur di bawah ini untuk memulai.")
 
-def show_text_encryption():
-    """Menu enkripsi teks"""
-    st.header("📝 Super Enkripsi Teks")
-    
-    with st.form("text_encryption_form"):
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            password = st.text_input("Encryption Password", type="password", 
-                                   value="my_secret_key", help="Password untuk enkripsi")
-            plaintext = st.text_area("Teks Plaintext", height=150, 
-                                   placeholder="Masukkan teks yang akan dienkripsi...")
-        
-        with col2:
-            st.markdown("### Encryption Info")
-            st.info("""
-            **Algoritma: Super Enkripsi**
-            1. Whitespace Manipulation
-            2. AES128-GCM Encryption
-            """)
-            
-            if plaintext:
-                st.metric("Text Length", f"{len(plaintext)} characters")
-        
-        encrypt_btn = st.form_submit_button("🔒 Enkripsi Teks")
-        
-        if encrypt_btn:
-            if not plaintext:
-                st.error("Masukkan teks yang akan dienkripsi!")
-            elif not password:
-                st.error("Masukkan password enkripsi!")
-            else:
-                try:
-                    # Initialize crypto
-                    crypto = SuperEncrypt(password)
-                    
-                    # Encrypt text
-                    encrypted_text = crypto.super_encrypt(plaintext)
-                    
-                    # Save to database
-                    save_encrypted_message(
-                        st.session_state.user_id, 
-                        plaintext, 
-                        encrypted_text, 
-                        "Super_Encrypt_Whitespace_AES128GCM"
-                    )
-                    
-                    # Display results
-                    st.success("✅ Teks berhasil dienkripsi!")
-                    
-                    col1, col2 = st.columns(2)
-                    with col1:
-                        st.text_area("Encrypted Text", encrypted_text, height=200)
-                    
-                    with col2:
-                        # Download button
-                        st.download_button(
-                            label="📥 Download Encrypted Text",
-                            data=encrypted_text,
-                            file_name=f"encrypted_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt",
-                            mime="text/plain"
-                        )
-                        
-                        # Stats
-                        original_size = len(plaintext.encode('utf-8'))
-                        encrypted_size = len(encrypted_text.encode('utf-8'))
-                        st.metric("Original Size", f"{original_size} bytes")
-                        st.metric("Encrypted Size", f"{encrypted_size} bytes")
-                        st.metric("Size Increase", f"{((encrypted_size - original_size) / original_size * 100):.1f}%")
-                
-                except Exception as e:
-                    st.error(f"❌ Enkripsi gagal: {str(e)}")
+    tab1, tab2, tab3 = st.tabs([
+        "1. Super Enkripsi (Teks)", 
+        "2. Steganografi (Gambar)", 
+        "3. Kriptografi File (File)"
+    ])
 
-def show_text_decryption():
-    """Menu dekripsi teks"""
-    st.header("🔓 Dekripsi Teks")
-    
-    with st.form("text_decryption_form"):
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            password = st.text_input("Decryption Password", type="password", 
-                                   value="my_secret_key", help="Password yang digunakan untuk enkripsi")
-            encrypted_text = st.text_area("Teks Terenkripsi", height=150, 
-                                        placeholder="Masukkan teks terenkripsi...")
-        
-        with col2:
-            st.markdown("### Decryption Info")
-            st.info("""
-            **Proses Dekripsi:**
-            1. AES128-GCM Decryption
-            2. Whitespace Removal
-            """)
-        
-        decrypt_btn = st.form_submit_button("🔓 Dekripsi Teks")
-        
-        if decrypt_btn:
-            if not encrypted_text:
-                st.error("Masukkan teks terenkripsi!")
-            elif not password:
-                st.error("Masukkan password dekripsi!")
-            else:
-                try:
-                    # Initialize crypto
-                    crypto = SuperEncrypt(password)
-                    
-                    # Decrypt text
-                    decrypted_text = crypto.super_decrypt(encrypted_text)
-                    
-                    # Display results
-                    st.success("✅ Teks berhasil didekripsi!")
-                    
-                    col1, col2 = st.columns(2)
-                    with col1:
-                        st.text_area("Decrypted Text", decrypted_text, height=200)
-                    
-                    with col2:
-                        # Download button
-                        st.download_button(
-                            label="📥 Download Decrypted Text",
-                            data=decrypted_text,
-                            file_name=f"decrypted_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt",
-                            mime="text/plain"
-                        )
-                
-                except Exception as e:
-                    st.error(f"❌ Dekripsi gagal: {str(e)}")
-
-def show_file_encryption():
-    """Menu enkripsi file"""
-    st.header("📁 Enkripsi File dengan ChaCha20")
-    
-    tab1, tab2 = st.tabs(["🔒 Enkripsi File", "🔓 Dekripsi File"])
-    
+    # --- Tab 1: Super Enkripsi (Teks) ---
     with tab1:
-        st.subheader("Enkripsi File")
+        st.header("Super Enkripsi (Whitespace + AES128-GCM)")
+        st.write("Masukkan teks di bawah ini untuk dienkripsi.")
         
-        with st.form("file_encryption_form"):
-            file_password = st.text_input("File Encryption Password", type="password",
-                                        value="file_secret_123")
-            uploaded_file = st.file_uploader("Pilih file untuk dienkripsi", 
-                                           type=None,  # All file types
-                                           key="encrypt_upload")
-            
-            encrypt_file_btn = st.form_submit_button("🔒 Enkripsi File")
-            
-            if encrypt_file_btn:
-                if not uploaded_file:
-                    st.error("Pilih file terlebih dahulu!")
-                elif not file_password:
-                    st.error("Masukkan password enkripsi!")
-                else:
-                    try:
-                        # Read file data
-                        file_data = uploaded_file.getvalue()
-                        
-                        # Initialize file crypto
-                        file_crypto = FileCrypto(file_password)
-                        
-                        # Encrypt file
-                        encrypted_data = file_crypto.encrypt_file(file_data)
-                        
-                        st.success("✅ File berhasil dienkripsi!")
-                        
-                        # Download encrypted file
-                        st.download_button(
-                            label="📥 Download Encrypted File",
-                            data=encrypted_data,
-                            file_name=f"encrypted_{uploaded_file.name}",
-                            mime="text/plain"
-                        )
-                        
-                        # Show stats
-                        col1, col2, col3 = st.columns(3)
-                        with col1:
-                            st.metric("Original Size", f"{len(file_data)} bytes")
-                        with col2:
-                            st.metric("Encrypted Size", f"{len(encrypted_data)} bytes")
-                        with col3:
-                            size_increase = ((len(encrypted_data) - len(file_data)) / len(file_data) * 100)
-                            st.metric("Size Change", f"{size_increase:.1f}%")
-                    
-                    except Exception as e:
-                        st.error(f"❌ Enkripsi file gagal: {str(e)}")
-    
+        plain_text = st.text_area("Teks Anda:", height=150, key="super_encrypt_input")
+        
+        if st.button("Proses Enkripsi Teks", key="super_encrypt_btn"):
+            if plain_text:
+                encrypted_result = handle_super_encrypt(plain_text)
+                st.subheader("Hasil Enkripsi:")
+                st.code(encrypted_result, language=None)
+            else:
+                st.warning("Harap masukkan teks terlebih dahulu.")
+
+    # --- Tab 2: Steganografi (Gambar) ---
     with tab2:
-        st.subheader("Dekripsi File")
+        st.header("Steganografi PVD (Sembunyikan Teks dalam Gambar)")
+        st.write("Upload gambar *cover* dan masukkan teks rahasia yang ingin disembunyikan.")
         
-        with st.form("file_decryption_form"):
-            decrypt_file_password = st.text_input("File Decryption Password", type="password",
-                                                value="file_secret_123")
-            encrypted_file = st.file_uploader("Pilih file terenkripsi", 
-                                            type=['txt'],
-                                            key="decrypt_upload")
-            
-            decrypt_file_btn = st.form_submit_button("🔓 Dekripsi File")
-            
-            if decrypt_file_btn:
-                if not encrypted_file:
-                    st.error("Pilih file terenkripsi terlebih dahulu!")
-                elif not decrypt_file_password:
-                    st.error("Masukkan password dekripsi!")
-                else:
-                    try:
-                        # Read encrypted data
-                        encrypted_data = encrypted_file.getvalue().decode('utf-8')
-                        
-                        # Initialize file crypto
-                        file_crypto = FileCrypto(decrypt_file_password)
-                        
-                        # Decrypt file
-                        decrypted_data = file_crypto.decrypt_file(encrypted_data)
-                        
-                        st.success("✅ File berhasil didekripsi!")
-                        
-                        # Determine file extension
-                        original_filename = encrypted_file.name
-                        if original_filename.startswith('encrypted_'):
-                            decrypted_filename = original_filename.replace('encrypted_', 'decrypted_')
-                        else:
-                            decrypted_filename = f"decrypted_{original_filename}"
-                        
-                        # Download decrypted file
-                        st.download_button(
-                            label="📥 Download Decrypted File",
-                            data=decrypted_data,
-                            file_name=decrypted_filename,
-                            mime="application/octet-stream"
-                        )
-                    
-                    except Exception as e:
-                        st.error(f"❌ Dekripsi file gagal: {str(e)}")
+        uploaded_image = st.file_uploader("Upload Gambar Cover (.png, .jpg)", type=["png", "jpg", "jpeg"], key="stego_img_upload")
+        secret_text = st.text_area("Teks Rahasia:", height=100, key="stego_text_input")
+        
+        if st.button("Sembunyikan Teks", key="stego_encode_btn"):
+            if uploaded_image is not None and secret_text:
+                # Proses steganografi
+                result_image = handle_steganography_encode(uploaded_image, secret_text)
+                
+                st.subheader("Hasil Gambar (Stego-Image):")
+                st.image(result_image, caption="Gambar dengan teks tersembunyi")
+                
+                # Menyiapkan tombol download
+                # Mengubah PIL Image menjadi bytes untuk di-download
+                buf = io.BytesIO()
+                result_image.save(buf, format="PNG")
+                img_bytes = buf.getvalue()
+                
+                st.download_button(
+                    label="Download Gambar Hasil",
+                    data=img_bytes,
+                    file_name="hasil_steganografi.png",
+                    mime="image/png"
+                )
+            else:
+                st.warning("Harap upload gambar dan masukkan teks rahasia.")
 
-def show_steganography():
-    """Menu steganografi PVD"""
-    st.header("🖼 Steganografi PVD")
-    
-    tab1, tab2 = st.tabs(["📤 Embed Text", "📥 Extract Text"])
-    
-    with tab1:
-        st.subheader("Sembunyikan Teks dalam Gambar")
+    # --- Tab 3: Kriptografi File ---
+    with tab3:
+        st.header("Enkripsi & Dekripsi File (ChaCha20)")
+        st.write("Upload file apa saja untuk dienkripsi atau didekripsi.")
         
-        with st.form("stego_embed_form"):
+        uploaded_file = st.file_uploader("Upload File Anda", key="file_crypto_upload")
+        
+        if uploaded_file is not None:
             col1, col2 = st.columns(2)
             
             with col1:
-                image_file = st.file_uploader("Pilih gambar", 
-                                            type=['png', 'jpg', 'jpeg'],
-                                            key="embed_image")
-                secret_text = st.text_area("Teks Rahasia", height=100,
-                                         placeholder="Masukkan teks yang akan disembunyikan...")
+                if st.button("Enkripsi File Ini", key="file_encrypt_btn"):
+                    encrypted_data = handle_file_encrypt(uploaded_file)
+                    st.success("File berhasil dienkripsi!")
+                    st.download_button(
+                        label="Download File Terenkripsi",
+                        data=encrypted_data,
+                        file_name=f"encrypted_{uploaded_file.name}",
+                        mime="application/octet-stream"
+                    )
             
             with col2:
-                if image_file:
-                    st.image(image_file, caption="Gambar yang dipilih", use_column_width=True)
-                
-                if secret_text:
-                    st.metric("Text Length", f"{len(secret_text)} characters")
-                    st.metric("Binary Length", f"{len(secret_text) * 8} bits")
-            
-            embed_btn = st.form_submit_button("🖼 Sembunyikan Teks")
-            
-            if embed_btn:
-                if not image_file:
-                    st.error("Pilih gambar terlebih dahulu!")
-                elif not secret_text:
-                    st.error("Masukkan teks rahasia!")
-                else:
-                    try:
-                        # Save uploaded image temporarily
-                        with open("temp_input.png", "wb") as f:
-                            f.write(image_file.getvalue())
-                        
-                        # Initialize steganography
-                        stego = PVDSteganography()
-                        
-                        # Embed text
-                        output_path = f"stego_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
-                        success, message = stego.embed_text("temp_input.png", secret_text, output_path)
-                        
-                        if success:
-                            st.success("✅ Teks berhasil disembunyikan dalam gambar!")
-                            
-                            # Show result
-                            col1, col2 = st.columns(2)
-                            with col1:
-                                st.image("temp_input.png", caption="Gambar Asli", use_column_width=True)
-                            with col2:
-                                st.image(output_path, caption="Gambar dengan Stegano", use_column_width=True)
-                            
-                            # Download button
-                            with open(output_path, "rb") as f:
-                                st.download_button(
-                                    label="📥 Download Stego Image",
-                                    data=f,
-                                    file_name=output_path,
-                                    mime="image/png"
-                                )
-                            
-                            st.info(f"**Info:** {message}")
-                            
-                            # Cleanup
-                            if os.path.exists("temp_input.png"):
-                                os.remove("temp_input.png")
-                        else:
-                            st.error(f"❌ Gagal: {message}")
-                    
-                    except Exception as e:
-                        st.error(f"❌ Error: {str(e)}")
-    
-    with tab2:
-        st.subheader("Ekstrak Teks dari Gambar")
-        
-        with st.form("stego_extract_form"):
-            stego_image = st.file_uploader("Pilih gambar dengan steganografi",
-                                         type=['png', 'jpg', 'jpeg'],
-                                         key="extract_image")
-            
-            extract_btn = st.form_submit_button("🔍 Ekstrak Teks")
-            
-            if extract_btn:
-                if not stego_image:
-                    st.error("Pilih gambar terlebih dahulu!")
-                else:
-                    try:
-                        # Save uploaded image temporarily
-                        with open("temp_stego.png", "wb") as f:
-                            f.write(stego_image.getvalue())
-                        
-                        # Initialize steganography
-                        stego = PVDSteganography()
-                        
-                        # Extract text
-                        success, extracted_text = stego.extract_text("temp_stego.png")
-                        
-                        if success:
-                            st.success("✅ Teks berhasil diekstrak!")
-                            
-                            st.image("temp_stego.png", caption="Gambar Stegano", use_column_width=True)
-                            
-                            st.text_area("Teks yang Diekstrak", extracted_text, height=150)
-                            
-                            # Download extracted text
-                            st.download_button(
-                                label="📥 Download Extracted Text",
-                                data=extracted_text,
-                                file_name=f"extracted_text_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt",
-                                mime="text/plain"
-                            )
-                        else:
-                            st.error(f"❌ Gagal mengekstrak teks: {extracted_text}")
-                        
-                        # Cleanup
-                        if os.path.exists("temp_stego.png"):
-                            os.remove("temp_stego.png")
-                    
-                    except Exception as e:
-                        st.error(f"❌ Error: {str(e)}")
-
-def show_history():
-    """Menu history"""
-    st.header("📊 History Enkripsi")
-    st.info("Fitur history akan diimplementasikan dengan query database")
-    
-    # Placeholder untuk history
-    st.write("""
-    Fitur ini akan menampilkan:
-    - Riwayat enkripsi/dekripsi teks
-    - File yang telah diproses
-    - Gambar steganografi yang dibuat
-    - Statistik penggunaan
-    """)
-
-def show_settings():
-    """Menu settings"""
-    st.header("⚙️ Settings")
-    
-    st.subheader("Encryption Settings")
-    
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        st.selectbox("Default Encryption Method", 
-                    ["Super Encrypt (Whitespace + AES128-GCM)", "AES-256", "ChaCha20"])
-        
-        st.number_input("Whitespace Probability", min_value=0.1, max_value=0.9, value=0.4, step=0.1)
-    
-    with col2:
-        st.selectbox("Default File Encryption", 
-                    ["ChaCha20-Poly1305", "AES-GCM", "XChaCha20"])
-        
-        st.selectbox("Steganography Method", 
-                    ["PVD (Pixel Value Differencing)", "LSB", "DCT"])
-    
-    st.subheader("Application Settings")
-    
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        st.checkbox("Auto-save to database", value=True)
-        st.checkbox("Show encryption statistics", value=True)
-    
-    with col2:
-        st.checkbox("Auto-delete temporary files", value=True)
-        st.checkbox("Enable file preview", value=True)
-    
-    if st.button("💾 Save Settings"):
-        st.success("Settings saved successfully!")
-
-if __name__ == "__main__":
-    main()
+                if st.button("Dekripsi File Ini", key="file_decrypt_btn"):
+                    decrypted_data = handle_file_decrypt(uploaded_file)
+                    st.success("File berhasil didekripsi!")
+                    st.download_button(
+                        label="Download File Terdekripsi",
+                        data=decrypted_data,
+                        file_name=f"decrypted_{uploaded_file.name}",
+                        mime="application/octet-stream"
+                    )
